@@ -1,8 +1,10 @@
-//logic.js to be import into index.js file
-
-//function to initialize game/grid at the start of the game
-function start_game() {
-
+//create all commands needed for the game
+//will be used in sketch.js
+const logic = {
+  
+  //function to initialize game/grid
+  start_game: function(){
+    
     //declare an empty grid
     let mat = [
         [0,0,0,0],
@@ -19,13 +21,13 @@ function start_game() {
     console.log("'D' or 'd' : Move right");
 
     //call a function to add a new 2
-    add_new_2(mat);
+    this.add_new_2(mat);
     return mat;
-};
-
-//function to add a new 2 to the array
-function add_new_2(mat) {
-
+  },
+  
+  //function to add another 2 to the grid
+  add_new_2: function(mat){
+    
     //choose a random row/column
     let r = Math.floor(Math.random() * 4);
     let c = Math.floor(Math.random() * 4);
@@ -38,11 +40,11 @@ function add_new_2(mat) {
 
     //place a new 2 at that empty cell
     mat[r][c] = 2
-};
-
-//function to get the current state
-function get_current_state(mat) {
-
+  },
+  
+  //function to get the current state
+  get_current_state: function(mat){
+    
     //if any cells contain 2048 then trigger win
     if(mat.includes(2048)) {
         return 'WON';
@@ -77,22 +79,20 @@ function get_current_state(mat) {
 
     //else we have lost
     return 'LOST'
-}
-
-//all functions below  are for left swap initially
-
-//function to compress the grid after step before and after merging cells
-function compress(mat) {
+  },
+  
+  //function to compress the grid
+  compress: function(mat){
     //bool variable to determine if mat was changed
-    let changed = false;
+    let same = false;
 
-    //empty grid
-    let new_mat = [];
-
-    //with all the cells empty
-    for(let i = 0; i < 3; i++){
-        new_mat.push([0]*4);
-    }
+    //empty grid with all the cells empty
+    let new_mat = [
+      [0,0,0,0],
+      [0,0,0,0],
+      [0,0,0,0],
+      [0,0,0,0]
+    ];
 
     //here we will shift entries of each cell to its extreme left row by row loop to
     //transverse rows
@@ -108,19 +108,19 @@ function compress(mat) {
                 new_mat[i][pos] = mat[i][j]
 
                 if(j != pos){
-                    changed = true
+                    same = true
                 }
                 pos += 1
             }
         }
     }
 
-    return new_mat, changed;
-}
-
-//function to merge cells in matrix after compressing
-function merge(mat) {
-    let changed = false
+    return [new_mat, same];
+  },
+  
+  //function to merge values together
+  merge: function(mat){
+    let same = false
 
     for(let i = 0; i < 3; i++){
         for(let j = 0; j < 2; j++){
@@ -134,16 +134,16 @@ function merge(mat) {
                 mat[i][j] = 0
 
                 //make bool variable true indicating the new grid after merging is different
-                changed = true
+                same = true
             }
         }
     }
 
-    return new_mat, changed
-}
-
-//function to reverse the matrix  reversing the content of each row (reversing the sequence)
-function reverse(mat){
+    return [mat, same];
+  },
+  
+  //function to reverse the grid
+  reverse: function(mat){
     let new_mat = []
     for(let i = 0; i < 3; i++){
         new_mat.push([]);
@@ -152,10 +152,10 @@ function reverse(mat){
         }
     }
     return new_mat
-}
-
-//function to interchange the rows and columns
-function transpose(mat){
+  },
+  
+  //function to interchange rows/columns
+  transpose: function(mat){
     let new_mat = [];
     for(let i = 0; i < 3; i++){
         new_mat.push([]);
@@ -164,82 +164,91 @@ function transpose(mat){
         }
     }
     return new_mat;
-}
-
-//functions to update the matrix
-
-//function to move/swipe left
-function move_left(mat){
-    let changed1, changed2, changed = null;
-    let new_grid = [];
+  },
+  
+  //functions to move the grid in specified directions
+  move: {
+    
+    //function to move/swipe left
+    left: function(grid){
+      let changed1, changed2, same = null;
+      let new_grid = [];
+      let results = []
     
     //first we compress the grid
-    new_grid, changed1 = compress(mat);
+      results = logic.compress(grid);
+      new_grid = results[0];
+      changed1 = results[1];
 
-    //then merge cells
-    new_grid, changed2 = merge(new_grid);
+      //then merge cells
+      results = logic.merge(new_grid);
+      new_grid = results[0];
+      changed2 = results[1];
 
-    changed = changed1 || changed2;
+      same = changed1 || changed2;
 
-    //compress again after merging
-    new_grid, temp = compress(new_grid);
+      //compress again after merging
+      results = logic.compress(new_grid);
+      new_grid = results[0];
 
-    //return new matrix and bool changed telling whether the grid is the same or different
-    return new_grid, changed
+      //return new matrix and bool changed telling whether the grid is the same or different
+      return [new_grid, same];
+    },
+    
+    //function to move/swipe right
+    right: function(grid){
+      let same = null;
+      let new_grid = [];
+      let results = [];
+
+      //reverse the matrix
+      new_grid = logic.reverse(grid);
+
+      //then move left
+      results = this.left(grid);
+      new_grid = results[0];
+      same = results[1];
+
+      //reverse the matrix again
+      new_grid = logic.reverse(new_grid);
+      return [new_grid, same];
+    },
+    
+    //function to move/swipe up
+    up: function(grid){
+      let same = null;
+      let new_grid = [];
+      let results = [];
+
+      //first we transpose the matrix
+      new_grid = logic.transpose(grid);
+
+      //then we move left
+      results = this.left(new_grid);
+      new_grid = results[1];
+      same = results[2];
+      
+      new_grid = logic.transpose(new_grid);
+      return [new_grid, same];
+    },
+    
+    //function to move/swipe down
+    down: function(grid){
+      let same = null;
+      let new_grid = [];
+      let results = []
+
+      //first we transpose the grid
+      new_grid = logic.transpose(grid);
+
+      //then we move right
+      results = this.right(new_grid);
+      new_grid = results[0];
+      same = results[1];
+
+      //then we transpose again
+      new_grid = logic.transpose(new_grid);
+      return [new_grid, same];
+    }
+  }
 }
-
-//function to move/swipe right
-function move_right(grid){
-    let changed = null;
-    let new_grid = [];
-
-    //reverse the matrix
-    new_grid = reverse(grid);
-
-    //then move left
-    new_grid, changed = move_left(grid);
-
-    //reverse the matrix again
-    new_grid = reverse(new_grid);
-}
-
-//function to move/swipe up
-function move_up(grid){
-    let changed = null;
-    let new_grid = [];
-
-    //first we transpose the matrix
-    new_grid = transpose(grid);
-
-    //then we move left
-    new_grid, changed = move_left(new_grid);
-    return new_grid, changed;
-}
-
-//function to move/swipe down
-function move_down(grid){
-    let changed = null;
-    let new_grid = [];
-
-    //first we transpose the grid
-    new_grid = transpose(grid);
-
-    //then we move right
-    new_grid, changed = move_right(new_grid);
-
-    //then we transpose again
-    new_grid = transpose(new_grid);
-    return new_grid, changed;
-}
-
-module.export = {
-    start_game,
-    add_new_2,
-    get_current_state,
-    compress, merge, reverse,
-    transpose,
-    move_left,
-    move_right,
-    move_up,
-    move_down
-};
